@@ -157,11 +157,7 @@ export function DashboardSidebar({
                   auditTrail.map((item) => (
                     <div
                       key={item.id}
-                      className={`relative transition-all duration-500 ${
-                        highlightedIds.includes(item.id)
-                          ? 'bg-green-300/30 animate-pulse ring-2 ring-green-400 border border-green-400 rounded-lg'
-                          : ''
-                      }`}
+                      className="relative bg-[#232e47] border border-border rounded-lg"
                     >
                       <div className="pt-3 pb-3">
                       <div className="flex items-center justify-between mb-1">
