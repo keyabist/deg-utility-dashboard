@@ -141,14 +141,14 @@ export function DashboardHeader({
         {/* Hamburger Menu */}
         <button
           className="p-2 rounded-md hover:bg-muted focus:outline-none focus:ring-2 focus:ring-primary cursor-pointer mr-4"
-          onClick={() => setSidebarOpen(true)}
-          aria-label="Open sidebar"
-        >
-          <Menu className="w-6 h-6 text-primary" />
-        </button>
-        <span className="text-xl font-semibold tracking-tight text-primary">
-          Utility Administration Portal
-        </span>
+            onClick={() => setSidebarOpen(true)}
+            aria-label="Open sidebar"
+          >
+            <Menu className="w-6 h-6 text-primary" />
+          </button>
+          <span className="text-xl font-semibold tracking-tight text-primary">
+            Utility Administration Portal
+          </span>
         <div className="flex items-center gap-4">
           {/* Avatar or user icon can go here */}
           <div className="w-8 h-8 rounded-full bg-primary flex items-center justify-center">

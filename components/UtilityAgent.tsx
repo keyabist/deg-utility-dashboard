@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useState, useEffect, useRef } from "react";
+import React, { useState, useRef, useEffect } from "react";
 import { Send, X, Minimize2, BarChart3, AlertTriangle } from "lucide-react";
 import ReactMarkdown from 'react-markdown';
 import DOMPurify from 'dompurify';
@@ -34,220 +34,77 @@ const UtilityAgent: React.FC<UtilityAgentProps> = ({
   onClose,
   initialMessage,
 }) => {
-  // Generate a stable ID for the initial message
   const initialMessageId = useRef(`initial-${Math.random().toString(36).substring(2, 11)}`).current;
-  
   const [messages, setMessages] = useState<Message[]>([
     {
       id: initialMessageId,
       text:
         initialMessage ||
-        "Good morning! Based on your past 12 months of usage and roof geometry, you're an excellent candidate for rooftop solar + battery.\n\nWould you like me to prepare a personalized plan and begin coordination?",
+        "Hi! How can I help you today?",
       isUser: false,
       timestamp: new Date().toISOString(),
     },
   ]);
   const [inputText, setInputText] = useState("");
-  const [isConnecting, setIsConnecting] = useState(false);
-  const [connectionError, setConnectionError] = useState<string | null>(null);
-  const [isProcessing, setIsProcessing] = useState(false); // New state for processing
+  const [isLoading, setIsLoading] = useState(false);
   const messagesEndRef = useRef<HTMLDivElement>(null);
-  const socketRef = useRef<WebSocket | null>(null);
-  const clientIdRef = useRef<string | null>(null);
-  const messageIdCounter = useRef(1);
 
-  // Generate stable IDs for messages
-  const generateMessageId = () => {
-    return `msg-${messageIdCounter.current++}`;
-  };
+  const generateMessageId = () => `msg-${Math.random().toString(36).substring(2, 11)}`;
 
-  // Initialize WebSocket connection
-  useEffect(() => {
-    // Try to get stored client ID
-    clientIdRef.current = localStorage.getItem('grid_utility_client_id');
-    
-    // Connect to WebSocket
-    connectWebSocket();
+  const handleSendMessage = async () => {
+    if (!inputText.trim() || isLoading) return;
 
-    // Cleanup on unmount
-    return () => {
-      if (socketRef.current) {
-        socketRef.current.close();
-      }
-    };
-  }, []);
-
-  const connectWebSocket = () => {
-    // Don't reconnect if already connected
-    if (socketRef.current && socketRef.current.readyState === WebSocket.OPEN) {
-      console.log("WebSocket already connected");
-      setIsConnecting(false);
-      return;
-    }
-    
-    setIsConnecting(true);
-    setConnectionError(null);
-    
-    // Create WebSocket connection using environment variable
-    const wsUrl = process.env.NEXT_PUBLIC_GRID_UTILITY_WS_URL || 'wss://api-deg-agents.becknprotocol.io/grid-utility/ws';
-    const socket = new WebSocket(wsUrl);
-    socketRef.current = socket;
-
-    socket.onopen = () => {
-      console.log("WebSocket connection established");
-      setIsConnecting(false);
-    };
-
-    socket.onmessage = (event) => {
-      try {
-        const response = JSON.parse(event.data);
-        console.log("WebSocket message received:", response);
-
-        // Store client ID if provided
-        if (response.client_id) {
-          clientIdRef.current = response.client_id;
-          localStorage.setItem('grid_utility_client_id', response.client_id);
-        }
-
-        // Handle grid alerts
-        if (response.status === 'alert' || (response.type === 'grid_alert' && response.status === 'success')) {
-          const alertMessage: Message = {
-            id: generateMessageId(),
-            text: response.message,
-            isUser: false,
-            timestamp: new Date().toISOString(),
-            type: 'grid_alert',
-            transformerData: response.transformer_data
-          };
-          
-          setMessages(prev => [...prev, alertMessage]);
-          
-          // If this is an alert with status 'success', we've already handled it
-          if (response.status === 'success') {
-            return;
-          }
-        }
-
-        // Handle different response types
-        switch (response.status) {
-          case 'connected':
-            console.log('Connected to grid-utility AI');
-            break;
-          case 'processing':
-            // Set processing state to true
-            setIsProcessing(true);
-            break;
-          case 'success':
-            // Set processing state to false
-            setIsProcessing(false);
-            
-            // Add AI response to messages (if not already handled as a grid alert)
-            if (response.message && response.type !== 'grid_alert') {
-              const agentResponse: Message = {
-                id: generateMessageId(),
-                text: response.message,
-                isUser: false,
-                timestamp: new Date().toISOString(),
-                type: response.type
-              };
-              setMessages(prev => [...prev, agentResponse]);
-            }
-            break;
-          case 'error':
-            // Set processing state to false
-            setIsProcessing(false);
-            
-            console.error('WebSocket error:', response.message);
-            const errorResponse: Message = {
-              id: generateMessageId(),
-              text: `Error: ${response.message || 'Something went wrong'}`,
-              isUser: false,
-              timestamp: new Date().toISOString(),
-            };
-            setMessages(prev => [...prev, errorResponse]);
-            break;
-        }
-      } catch (error) {
-        console.error("Error parsing WebSocket message:", error);
-        setIsProcessing(false);
-      }
-    };
-
-    socket.onerror = (error) => {
-      console.error("WebSocket error:", error);
-      setConnectionError("Failed to connect to the utility agent");
-      setIsConnecting(false);
-      setIsProcessing(false);
-    };
-
-    socket.onclose = (event) => {
-      console.log("WebSocket connection closed:", event.code, event.reason);
-      setIsConnecting(false);
-      setIsProcessing(false);
-      
-      // Attempt to reconnect if closed unexpectedly
-      if (event.code !== 1000) {
-        setTimeout(() => {
-          if (socketRef.current?.readyState !== WebSocket.OPEN) {
-            connectWebSocket();
-          }
-        }, 3000);
-      }
-    };
-  };
-
-  const handleSendMessage = () => {
-    if (!inputText.trim() || isConnecting) return;
-
-    // Add user message
-    const userMessage: Message = {
+    const userMsg: Message = {
       id: generateMessageId(),
       text: inputText,
       isUser: true,
       timestamp: new Date().toISOString(),
     };
 
-    setMessages(prev => [...prev, userMessage]);
+    setMessages((prev) => [...prev, userMsg]);
     setInputText("");
+    setIsLoading(true);
 
-    // Ensure we scroll to the bottom
-    setTimeout(() => {
-      messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
-    }, 100);
+    try {
+      const response = await fetch('/api/chat', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({ messages: [...messages, userMsg] }),
+      });
 
-    // Send message to WebSocket if connected
-    if (socketRef.current && socketRef.current.readyState === WebSocket.OPEN) {
-      const message = {
-        query: inputText,
-        client_id: clientIdRef.current
-      };
-      
-      socketRef.current.send(JSON.stringify(message));
-    } else {
-      console.error("WebSocket not connected");
-      
-      // Attempt to reconnect
-      connectWebSocket();
-      
-      // Add error message
-      const errorResponse: Message = {
+      const data = await response.json();
+
+      if (response.ok) {
+        const agentMsg: Message = {
+          id: generateMessageId(),
+          text: data.reply,
+          isUser: false,
+          timestamp: new Date().toISOString(),
+        };
+        setMessages((prev) => [...prev, agentMsg]);
+      } else {
+        throw new Error(data.error || 'Something went wrong');
+      }
+    } catch (error) {
+      console.error("Failed to get AI response:", error);
+      const errorMsg: Message = {
         id: generateMessageId(),
-        text: "Connection to the utility agent was lost. Attempting to reconnect...",
+        text: "Sorry, I'm having trouble connecting. Please try again later.",
         isUser: false,
         timestamp: new Date().toISOString(),
       };
-      setMessages(prev => [...prev, errorResponse]);
-      
-      // Queue the message to be sent once reconnected
-      setTimeout(() => {
-        if (socketRef.current && socketRef.current.readyState === WebSocket.OPEN) {
-          const message = {
-            query: inputText,
-            client_id: clientIdRef.current
-          };
-          socketRef.current.send(JSON.stringify(message));
-        }
-      }, 3000);
+      setMessages((prev) => [...prev, errorMsg]);
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  const handleKeyPress = (e: React.KeyboardEvent) => {
+    if (e.key === "Enter" && !e.shiftKey) {
+      e.preventDefault();
+      handleSendMessage();
     }
   };
 
@@ -257,14 +114,7 @@ const UtilityAgent: React.FC<UtilityAgentProps> = ({
 
   useEffect(() => {
     scrollToBottom();
-  }, [messages, isProcessing]);
-
-  const handleKeyPress = (e: React.KeyboardEvent) => {
-    if (e.key === "Enter" && !e.shiftKey) {
-      e.preventDefault();
-      handleSendMessage();
-    }
-  };
+  }, [messages]);
 
   const renderChart = (chart: ChartData) => {
     return (
@@ -370,10 +220,6 @@ const UtilityAgent: React.FC<UtilityAgentProps> = ({
             <div className="flex items-center gap-2">
               <span className="text-lg font-semibold">Agent Chat</span>
             </div>
-            <span className="ml-3 text-xs text-green-400 flex items-center gap-1">
-              <span className="w-2 h-2 rounded-full bg-green-400 inline-block"></span>{" "}
-              {isConnecting ? "Connecting..." : "Online"}
-            </span>
         </div>
       </div>
       {/* Messages */}
@@ -381,12 +227,6 @@ const UtilityAgent: React.FC<UtilityAgentProps> = ({
         className="flex-1 px-6 py-4 overflow-y-auto flex flex-col gap-1 bg-card"
         style={{ minHeight: 0 }}
       >
-        {connectionError && (
-          <div className="bg-red-50 text-red-500 p-2 rounded-md mb-2 text-sm">
-            {connectionError}
-          </div>
-        )}
-        
         {messages.map((message) => (
           <div
             key={message.id}
@@ -431,19 +271,18 @@ const UtilityAgent: React.FC<UtilityAgentProps> = ({
           </div>
         ))}
         
-        {/* Processing indicator */}
-        {isProcessing && (
+        {isLoading && (
           <div className="flex items-start mt-2">
             <div className="flex flex-col">
               <div className="flex items-center gap-2 mb-1">
                 <span className="text-xs text-blue-300 font-semibold">
-                  Grid Agent
+                  Utility Agent
                 </span>
                 <span className="text-xs text-muted-foreground">
-                  {formatTime(new Date().toISOString())}
+                  {new Date().toLocaleTimeString()}
                 </span>
               </div>
-              <div className="mt-1 inline-block px-3 py-2 rounded-lg chat-input-message text-foreground">
+              <div className="mt-1 inline-block px-3 py-2 rounded-lg bg-gray-200 dark:bg-gray-700 text-foreground">
                 <div className="typing-indicator">
                   <span></span>
                   <span></span>
@@ -465,50 +304,44 @@ const UtilityAgent: React.FC<UtilityAgentProps> = ({
           value={inputText}
           onChange={(e) => setInputText(e.target.value)}
           onKeyDown={handleKeyPress}
-          disabled={isConnecting}
+          disabled={isLoading}
         />
         <button
           onClick={handleSendMessage}
           className={`rounded-full p-2 transition ${
-            isConnecting 
+            isLoading 
               ? "bg-gray-300 cursor-not-allowed" 
               : "bg-primary text-primary-foreground hover:bg-primary/90"
           }`}
-          disabled={isConnecting}
+          disabled={isLoading}
         >
           <Send className="w-5 h-5" />
         </button>
       </div>
-      
       {/* CSS for typing indicator */}
       <style jsx>{`
         .typing-indicator {
           display: flex;
           align-items: center;
         }
-        
         .typing-indicator span {
           height: 8px;
           width: 8px;
           margin: 0 1px;
-          background-color: #8B5CF6;
+          background-color: #9E9E9E;
           border-radius: 50%;
           display: inline-block;
           opacity: 0.4;
         }
-        
         .typing-indicator span:nth-child(1) {
           animation: pulse 1s infinite ease-in-out;
         }
-        
         .typing-indicator span:nth-child(2) {
           animation: pulse 1s infinite ease-in-out 0.2s;
         }
-        
         .typing-indicator span:nth-child(3) {
           animation: pulse 1s infinite ease-in-out 0.4s;
         }
-        
         @keyframes pulse {
           0%, 60%, 100% {
             transform: scale(1);
