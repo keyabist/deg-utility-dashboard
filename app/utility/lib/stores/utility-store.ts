@@ -110,7 +110,8 @@ export const useSimplifiedUtilDataStore = create<SimplifiedDataState>(
 
     startStream: async (transformerId: number) => {
       set({ isLoading: true });
-      const url = `http://localhost:1337/meter-data-simulator/transformer-load-streamed/${transformerId}`;
+      const baseUrl = process.env.NEXT_PUBLIC_STRAPI_API_URL || "http://localhost:1337";
+      const url = `${baseUrl}/meter-data-simulator/transformer-load-streamed/${transformerId}`;
 
       const connect = async () => {
         try {

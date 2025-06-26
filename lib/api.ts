@@ -17,7 +17,8 @@ export function useMeterDataStream(meterId: string | number | undefined) {
 
         async function stream() {
             try {
-                const response = await fetch(`http://localhost:1337/meter-data-simulator/meter-dataset-streamed/${meterId}`);
+                const baseUrl = process.env.NEXT_PUBLIC_STRAPI_API_URL || "http://localhost:1337";
+                const response = await fetch(`${baseUrl}/meter-data-simulator/meter-dataset-streamed/${meterId}`);
                 if (!response?.body) throw new Error('Response body is null');
                 const reader = response.body.getReader();
                 const decoder = new TextDecoder();
