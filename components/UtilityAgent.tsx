@@ -48,6 +48,9 @@ const UtilityAgent: React.FC<UtilityAgentProps> = ({
   const [inputText, setInputText] = useState("");
   const [isLoading, setIsLoading] = useState(false);
   const messagesEndRef = useRef<HTMLDivElement>(null);
+  const [lastCritical, setLastCritical] = useState<string | null>(null);
+  const [dfpAction, setDfpAction] = useState<'accepted' | 'rejected' | null>(null);
+  const [latestAlertId, setLatestAlertId] = useState<string | null>(null);
 
   const generateMessageId = () => `msg-${Math.random().toString(36).substring(2, 11)}`;
 
@@ -115,6 +118,58 @@ const UtilityAgent: React.FC<UtilityAgentProps> = ({
   useEffect(() => {
     scrollToBottom();
   }, [messages]);
+
+  useEffect(() => {
+    const interval = setInterval(async () => {
+      try {
+        const res = await fetch('/api/critical');
+        const data = await res.json();
+        if (data.message && JSON.stringify(data.message) !== lastCritical) {
+          console.log('Received critical payload:', data.message);
+          setLastCritical(JSON.stringify(data.message));
+          let alertText = '';
+          if (data.message && data.message.transformer) {
+            const t = data.message.transformer;
+            const totalBaseKWh = data.message.totalBaseKWh;
+            console.log('Debug totalBaseKWh:', totalBaseKWh, 'from', data.message);
+            alertText = `⚠️ Potential grid overload at **${t.name}**.\nCurrent capacity: **${totalBaseKWh !== undefined && totalBaseKWh !== null ? totalBaseKWh : 'N/A'} kWh**\nMax capacity: **${t.max_capacity_KW} kW**\n\nDo you want to release DFP?`;
+          } else {
+            alertText = typeof data.message === 'string' ? data.message : JSON.stringify(data.message, null, 2);
+          }
+          const newId = generateMessageId();
+          setLatestAlertId(newId);
+          setDfpAction(null);
+          setMessages((prev) => [
+            ...prev,
+            {
+              id: newId,
+              text: alertText,
+              isUser: false,
+              timestamp: new Date().toISOString(),
+              type: 'grid_alert',
+            },
+          ]);
+        }
+      } catch (e) {
+        // ignore polling errors
+      }
+    }, 3000);
+    return () => clearInterval(interval);
+  }, [lastCritical]);
+
+  const handleDfpAction = (action: 'accepted' | 'rejected') => {
+    setDfpAction(action);
+    setMessages((prev) => [
+      ...prev,
+      {
+        id: generateMessageId(),
+        text: action === 'accepted' ? 'DFP release accepted.' : 'DFP release rejected.',
+        isUser: false,
+        timestamp: new Date().toISOString(),
+        type: 'grid_alert',
+      },
+    ]);
+  };
 
   const renderChart = (chart: ChartData) => {
     return (
@@ -195,6 +250,23 @@ const UtilityAgent: React.FC<UtilityAgentProps> = ({
         >
           {message.text}
         </ReactMarkdown>
+        {/* DFP Action Buttons for the latest alert only */}
+        {message.type === 'grid_alert' && message.id === latestAlertId && dfpAction === null && (
+          <div className="mt-4 flex gap-2">
+            <button
+              className="px-4 py-1 rounded bg-green-600 text-white font-semibold hover:bg-green-700 transition"
+              onClick={() => handleDfpAction('accepted')}
+            >
+              Accept
+            </button>
+            <button
+              className="px-4 py-1 rounded bg-red-600 text-white font-semibold hover:bg-red-700 transition"
+              onClick={() => handleDfpAction('rejected')}
+            >
+              Reject
+            </button>
+          </div>
+        )}
       </div>
     );
   };
