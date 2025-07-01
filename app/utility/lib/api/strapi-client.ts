@@ -6,6 +6,7 @@ export const strapiClient = {
   GET: async (
     endpoint: string,
     queryParams?: Record<string, any>,
+    jwtToken?: string
   ): Promise<{ data: StrapiApiRoot | null; error: any }> => {
     let url = `${STRAPI_BASE_URL}${endpoint}`
 
@@ -34,7 +35,7 @@ export const strapiClient = {
         method: "GET",
         headers: {
           "Content-Type": "application/json",
-          // Add Authorization header if needed
+          ...(jwtToken ? { "Authorization": `Bearer ${jwtToken}` } : {}),
         },
         next: { revalidate: 300 }, // Revalidate every 5 minutes
       })
