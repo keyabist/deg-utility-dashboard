@@ -20,29 +20,14 @@ export const useSimplifiedUtilData = create<SimplifiedDataState>((set) => ({
     setData: (data) => set({ data }),
     clear: () => set({ data: [] }),
     fetchAndStore: async () => {
-        // @ts-ignore
-        const { data, error } = await strapiClient.GET("/meter-data-simulator/utility/detailed", {
-            // params: {
-            //     // @ts-ignore: If type mismatch, adjust as needed
-            //     query: {
-            //         "pagination[page]": 1,
-            //         "pagination[pageSize]": 100,
-            //         populate: "substations.transformers.meters.energyResource"
-            //     }
-            // }
-        });
-        console.log('simplified util', data);
-        
+        const { data, error } = await strapiClient.GET();
         if (error) {
-            // handle error as needed
             set({ data: [] });
             return;
         }
-        if (data) {
-            // @ts-ignore: If type mismatch, adjust as needed
-            const simplified = simplifyUtilData(data);
-            console.log('simplified util', simplified);
-            set({ data: simplified });
+        if (data && data.results && data.results.bus_details) {
+            // We'll map this in the next step
+            set({ data: data.results.bus_details });
         }
     }
 }));

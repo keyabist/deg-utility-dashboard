@@ -60,43 +60,16 @@ export const useSimplifiedUtilDataStore = create<SimplifiedDataState>(
 
     fetchAndStore: async () => {
       set({ isLoading: true });
-
-      // Deep populate query for Strapi v4
-      const populateQuery =
-        "substations.transformers.meters.energyResource.ders.appliance";
-
-      const { data, error } = await strapiClient.GET(
-        "/meter-data-simulator/utility/detailed",
-        {
-          populate: populateQuery,
-        }
-      );
-
+      const { data, error } = await strapiClient.GET();
       if (error) {
-        console.error("Error fetching utility data from Strapi:", error);
-        set({
-          data: { substations: [], transformers: [], meters: [] },
-          isLoading: false,
-        });
+        set({ data: { substations: [], transformers: [], meters: [] }, isLoading: false });
         return;
       }
-
-      if (data && data.utilities) {
+      if (data) {
         const simplified = simplifyUtilData(data);
-        set({
-          data: simplified,
-          isLoading: false,
-          transformerData: simplifyUtilDataForDashboard(data),
-        });
+        set({ data: simplified, isLoading: false });
       } else {
-        console.error(
-          "Fetched data is null or not in expected format (missing utilities array):",
-          data
-        );
-        set({
-          data: { substations: [], transformers: [], meters: [] },
-          isLoading: false,
-        });
+        set({ data: { substations: [], transformers: [], meters: [] }, isLoading: false });
       }
     },
 

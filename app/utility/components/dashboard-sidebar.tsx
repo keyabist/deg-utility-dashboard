@@ -85,11 +85,11 @@ export function DashboardSidebar({
                               ? "bg-yellow-400"
                               : "bg-green-500"
                           }`}
-                          style={{ width: `${item.currentLoad}%` }}
+                          style={{ width: `${((item.currentLoad / item.maxCapacity) * 100).toFixed(2)}%` }}
                         />
                       </div>
                       <div className="flex justify-between text-xs text-muted-foreground">
-                        <span>{item.currentLoad}%</span>
+                        <span>{((item.currentLoad / item.maxCapacity) * 100).toFixed(2)}%</span>
                         <span>{item.maxCapacity} kW</span>
                       </div>
                     </div>

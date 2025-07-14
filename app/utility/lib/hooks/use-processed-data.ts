@@ -24,7 +24,7 @@ const calculateStatus = (
 
 export function useProcessedData() {
   const { data } = useSimplifiedUtilDataStore();
-  const { substations = [], transformers = [], meters = [] } = data || {};
+  const { transformers = [], meters = [] } = data || {};
 
   return useMemo(() => {
     if (!meters || meters.length === 0) {
@@ -40,67 +40,47 @@ export function useProcessedData() {
     }
 
     const allAssets: AssetMarker[] = [];
-    let overallTotalCapacity = 0;
-    let overallTotalCurrentLoad = 0;
-    let overallTotalActiveDers = 0;
-    let overallTotalMetersCount = meters.length;
 
-    // 1. Process Substations (from substations array)
-    substations.forEach((sub) => {
-      if (sub.latitude && sub.longtitude) {
-        allAssets.push({
-          id: `sub_${sub.id}`,
-          name: sub.name,
-          type: "substation",
-          coordinates: [parseFloat(sub.latitude), parseFloat(sub.longtitude)],
-          status: "Normal", // You can calculate status if needed
-        });
-      }
-    });
-
-    // 2. Process Transformers (from transformers array)
+    // Transformers
     const transformerSummaries: TransformerSummaryItem[] = [];
-    if (transformers.length > 0) {
-      transformers.forEach((tr) => {
-        // Use first meter's coordinates as proxy for transformer location
-        if (tr.latitude && tr.longtitude) {
-          allAssets.push({
-            id: `trans_${tr.id}`,
-            name: tr.name,
-            type: "transformer",
-            coordinates: [
-              parseFloat(String(tr.latitude)),
-              parseFloat(String(tr.longtitude)),
-            ],
-            status: tr.status, // You can calculate status if needed
-            emergencyService: tr.emergencyService || false,
-          });
-        }
-        transformerSummaries.push({
-          id: tr.id.toString(),
+    transformers.forEach((tr) => {
+      const lat = typeof tr.latitude === 'string' ? parseFloat(tr.latitude) : tr.latitude;
+      const lon = typeof tr.longtitude === 'string' ? parseFloat(tr.longtitude) : tr.longtitude;
+      if (!isNaN(lat) && !isNaN(lon)) {
+        allAssets.push({
+          id: `trans_${tr.id}`,
           name: tr.name,
-          substationName: "", // Fill if needed
-          city: `${tr.city}, ${tr.state}`,
-          currentLoad: tr.currentLoad || 0,
+          type: "transformer",
+          coordinates: [lat, lon],
           status: tr.status || "Normal",
-          metersCount: tr.meters ? tr.meters.length : 0,
-          maxCapacity: tr.max_capacity_KW,
-          margin: tr.margin || 0,
           emergencyService: tr.emergencyService || false,
         });
+      }
+      transformerSummaries.push({
+        id: tr.id.toString(),
+        name: tr.name,
+        substationName: "", // No substations
+        city: "San Francisco, California",
+        currentLoad: tr.currentLoad || 0,
+        status: tr.status || "Normal",
+        metersCount: tr.meters ? tr.meters.length : 0,
+        maxCapacity: tr.max_capacity_KW,
+        margin: tr.margin || 0,
+        emergencyService: tr.emergencyService || false,
       });
-    }
+    });
 
-    // 3. Process Households (Meters)
+    // Households (Meters)
     meters.forEach((meter) => {
-      if (meter.latitude && meter.longitude) {
+      const lat = typeof meter.latitude === 'string' ? parseFloat(meter.latitude) : meter.latitude;
+      const lon = typeof meter.longitude === 'string' ? parseFloat(meter.longitude) : meter.longitude;
+      if (!isNaN(lat) && !isNaN(lon)) {
         allAssets.push({
           id: `house_${meter.id}`,
           name: meter.code,
           type: "household",
-          coordinates: [parseFloat(String(meter.latitude)),
-            parseFloat(String(meter.longitude)),],
-          status: "Normal", // You can calculate status if needed
+          coordinates: [lat, lon],
+          status: "Normal",
           hasDers: meter.ders && meter.ders.length > 0,
         });
       }
@@ -118,5 +98,5 @@ export function useProcessedData() {
       systemMetrics,
       transformerSummaries,
     };
-  }, [substations, transformers, meters]);
+  }, [transformers, meters]);
 }

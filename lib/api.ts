@@ -4,45 +4,6 @@ import { useEffect, useState } from "react";
 
 export const api = createClient(strapiClient);
 
-export function useMeterDataStream(meterId: string | number | undefined) {
-    const [data, setData] = useState<any>(null);
-    const [loading, setLoading] = useState<boolean>(false);
-    const [error, setError] = useState<any>(null);
-
-    useEffect(() => {
-        if (!meterId) return;
-        let cancelled = false;
-        setLoading(true);
-        setError(null);
-
-        async function stream() {
-            try {
-                const baseUrl = process.env.NEXT_PUBLIC_STRAPI_API_URL || "http://localhost:1337";
-                const response = await fetch(`${baseUrl}/meter-data-simulator/meter-dataset-streamed/${meterId}`);
-                if (!response?.body) throw new Error('Response body is null');
-                const reader = response.body.getReader();
-                const decoder = new TextDecoder();
-
-                while (true) {
-                    const { value, done } = await reader.read();
-                    if (done || cancelled) break;
-                    const chunk = decoder.decode(value);
-                    const parsed = JSON.parse(chunk);
-                    setData(parsed);
-                }
-            } catch (err) {
-                if (!cancelled) setError(err);
-            } finally {
-                if (!cancelled) setLoading(false);
-            }
-        }
-
-        stream();
-
-        return () => {
-            cancelled = true;
-        };
-    }, []);
-
-    return { data, loading, error };
+export async function fetchNodeData() {
+  return await strapiClient();
 }

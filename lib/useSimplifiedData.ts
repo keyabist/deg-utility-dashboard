@@ -22,28 +22,14 @@ export const useSimplifiedData = create<SimplifiedDataState>((set) => ({
     setData: (data) => set({ data }),
     clear: () => set({ data: [] }),
     fetchAndStore: async () => {
-        // Adjust the endpoint and params as needed
-        const { data, error } = await strapiClient.GET('/api/energy-resources', {
-            params: {
-                // @ts-ignore: If type mismatch, adjust as needed
-                query: {
-                    "pagination[page]": 1,
-                    "pagination[pageSize]": 7,
-                    populate: "ders,meter"
-                }
-            }
-        });
-        
+        const { data, error } = await strapiClient.GET();
         if (error) {
-            // handle error as needed
             set({ data: [] });
             return;
         }
-        if (data) {
-            // @ts-ignore: If type mismatch, adjust as needed
-            const simplified = simplifyData(data as any);
-            console.log('simplified', simplified);
-            set({ data: simplified });
+        if (data && data.results && data.results.bus_details) {
+            // We'll map this in the next step
+            set({ data: data.results.bus_details });
         }
     }
 }));
