@@ -62,13 +62,32 @@ export async function POST(req: Request) {
             history: prevHistory
         };
 
-        const backendRes = await fetch('http://localhost:8000/run', {
-            method: 'POST',
-            headers: {
-                'Content-Type': 'application/json',
-            },
-            body: JSON.stringify(requestBody),
-        });
+        // Helper function to call backend
+        async function callBackend() {
+            const backendRes = await fetch('http://localhost:8000/run', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                },
+                body: JSON.stringify(requestBody),
+            });
+            return backendRes;
+        }
+
+        let backendRes = await callBackend();
+        if (backendRes.status === 404) {
+            // Try to activate session again and retry
+            sessionActivated = false; // force re-activation
+            await ensureSessionActivated();
+            // Update userId and sessionId in requestBody
+            requestBody.userId = globalUserId!;
+            requestBody.sessionId = globalSessionId!;
+            backendRes = await callBackend();
+        }
+
+        if (!backendRes.ok) {
+            throw new Error(`Backend error: ${backendRes.status}`);
+        }
 
         const backendData = await backendRes.json();
         // backendData is expected to be an array of message objects
@@ -82,7 +101,7 @@ export async function POST(req: Request) {
             : [];
 
         // Store filtered history for this session
-        sessionHistories[sessionId] = filteredHistory;
+        sessionHistories[requestBody.sessionId] = filteredHistory;
 
         // Find the latest model/agent response to send to the frontend
         let latestModelMsg = null;

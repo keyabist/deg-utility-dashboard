@@ -128,10 +128,27 @@ const UtilityAgent: React.FC<UtilityAgentProps> = ({
           console.log('Received critical payload:', data.message);
           setLastCritical(JSON.stringify(data.message));
           let alertText = '';
-          if (data.message && data.message.transformer) {
+          // New backend: data.message is an array of bus objects
+          if (Array.isArray(data.message)) {
+            // Flatten all critical transformers
+            const transformers = data.message.flatMap((busObj: any) => busObj.critical_transformers || []);
+            if (transformers.length > 0) {
+              alertText =
+                `⚠️ Potential grid overload detected:\n\n` +
+                transformers
+                  .map(
+                    (t: any) =>
+                      `- Transformer **${t.name}**: **${t.current_kVA} kVA** / **${t.rated_kVA} kVA** (**${t.loading_percent}%** loaded)`
+                  )
+                  .join('\n') +
+                `\n\nDo you want to release DFP?`;
+            } else {
+              alertText = '⚠️ Potential grid overload detected, but no critical transformers listed.';
+            }
+          } else if (data.message && data.message.transformer) {
+            // Fallback for old format
             const t = data.message.transformer;
             const totalBaseKWh = data.message.totalBaseKWh;
-            console.log('Debug totalBaseKWh:', totalBaseKWh, 'from', data.message);
             alertText = `⚠️ Potential grid overload at **${t.name}**.\nCurrent capacity: **${totalBaseKWh !== undefined && totalBaseKWh !== null ? totalBaseKWh : 'N/A'} kWh**\nMax capacity: **${t.max_capacity_KW} kW**\n\nDo you want to release DFP?`;
           } else {
             alertText = typeof data.message === 'string' ? data.message : JSON.stringify(data.message, null, 2);
@@ -169,6 +186,47 @@ const UtilityAgent: React.FC<UtilityAgentProps> = ({
         type: 'grid_alert',
       },
     ]);
+    if (action === 'accepted') {
+      // Send a prompt to the agent for DFP details
+      const userMsg: Message = {
+        id: generateMessageId(),
+        text: 'Please provide details of all available DFPs.',
+        isUser: true,
+        timestamp: new Date().toISOString(),
+      };
+      setMessages((prev) => [...prev, userMsg]);
+      setIsLoading(true);
+      fetch('/api/chat', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({ messages: [...messages, userMsg] }),
+      })
+        .then((response) => response.json())
+        .then((data) => {
+          const agentMsg: Message = {
+            id: generateMessageId(),
+            text: data.reply,
+            isUser: false,
+            timestamp: new Date().toISOString(),
+          };
+          setMessages((prev) => [...prev, agentMsg]);
+        })
+        .catch((error) => {
+          console.error('Failed to get AI response:', error);
+          const errorMsg: Message = {
+            id: generateMessageId(),
+            text: "Sorry, I'm having trouble connecting. Please try again later.",
+            isUser: false,
+            timestamp: new Date().toISOString(),
+          };
+          setMessages((prev) => [...prev, errorMsg]);
+        })
+        .finally(() => {
+          setIsLoading(false);
+        });
+    }
   };
 
   const renderChart = (chart: ChartData) => {
