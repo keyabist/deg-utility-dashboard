@@ -130,20 +130,35 @@ const UtilityAgent: React.FC<UtilityAgentProps> = ({
           let alertText = '';
           // New backend: data.message is an array of bus objects
           if (Array.isArray(data.message)) {
-            // Flatten all critical transformers
-            const transformers = data.message.flatMap((busObj: any) => busObj.critical_transformers || []);
-            if (transformers.length > 0) {
+            // New backend: data.message is an array of transformer objects
+            if (data.message.length > 0 && data.message[0].name && data.message[0].current_kVA !== undefined) {
               alertText =
                 `⚠️ Potential grid overload detected:\n\n` +
-                transformers
+                data.message
                   .map(
                     (t: any) =>
                       `- Transformer **${t.name}**: **${t.current_kVA} kVA** / **${t.rated_kVA} kVA** (**${t.loading_percent}%** loaded)`
                   )
                   .join('\n') +
                 `\n\nDo you want to release DFP?`;
+            } else if (data.message.length > 0 && data.message[0].critical_transformers) {
+              // Previous format: array of bus objects with critical_transformers
+              const transformers = data.message.flatMap((busObj: any) => busObj.critical_transformers || []);
+              if (transformers.length > 0) {
+                alertText =
+                  `⚠️ Potential grid overload detected:\n\n` +
+                  transformers
+                    .map(
+                      (t: any) =>
+                        `- Transformer **${t.name}**: **${t.current_kVA} kVA** / **${t.rated_kVA} kVA** (**${t.loading_percent}%** loaded)`
+                    )
+                    .join('\n') +
+                  `\n\nDo you want to release DFP?`;
+              } else {
+                alertText = JSON.stringify(data.message, null, 2);
+              }
             } else {
-              alertText = '⚠️ Potential grid overload detected, but no critical transformers listed.';
+              alertText = JSON.stringify(data.message, null, 2);
             }
           } else if (data.message && data.message.transformer) {
             // Fallback for old format
@@ -151,7 +166,7 @@ const UtilityAgent: React.FC<UtilityAgentProps> = ({
             const totalBaseKWh = data.message.totalBaseKWh;
             alertText = `⚠️ Potential grid overload at **${t.name}**.\nCurrent capacity: **${totalBaseKWh !== undefined && totalBaseKWh !== null ? totalBaseKWh : 'N/A'} kWh**\nMax capacity: **${t.max_capacity_KW} kW**\n\nDo you want to release DFP?`;
           } else {
-            alertText = typeof data.message === 'string' ? data.message : JSON.stringify(data.message, null, 2);
+            alertText = JSON.stringify(data.message, null, 2);
           }
           const newId = generateMessageId();
           setLatestAlertId(newId);
@@ -187,10 +202,23 @@ const UtilityAgent: React.FC<UtilityAgentProps> = ({
       },
     ]);
     if (action === 'accepted') {
-      // Send a prompt to the agent for DFP details
+      // Find the latest alert message with transformer details
+      let neighbourhoods = [];
+      // Find the last grid_alert message
+      const lastAlertMsg = [...messages].reverse().find((msg) => msg.type === 'grid_alert');
+      if (lastAlertMsg) {
+        // Try to extract transformer names from the alert text
+        // Regex to match: - Transformer **name**:
+        const regex = /- Transformer \*\*(.*?)\*\*:/g;
+        let match;
+        while ((match = regex.exec(lastAlertMsg.text)) !== null) {
+          neighbourhoods.push(match[1]);
+        }
+      }
+      const neighbourhoodsStr = neighbourhoods.length > 0 ? neighbourhoods.join(', ') : 'the affected neighbourhoods';
       const userMsg: Message = {
         id: generateMessageId(),
-        text: 'Please provide details of all available DFPs.',
+        text: `Please provide details of all available DFPs for the following neighbourhoods: ${neighbourhoodsStr}.`,
         isUser: true,
         timestamp: new Date().toISOString(),
       };
