@@ -1,19 +1,25 @@
 import type { StrapiApiRoot,  SimplifiedData,  SubstationWithUtility, TransformerWithSubstation, MeterWithTransformer, StrapiAuditTrail, SimplifiedAuditTrail } from "../types"
 
-// San Francisco bounding box (approx)
-const SF_LAT_MIN = 37.708;
-const SF_LAT_MAX = 37.810;
-const SF_LON_MIN = -122.515;
-const SF_LON_MAX = -122.355;
-
-function normalizeCoord(x: number, y: number, xMin: number, xMax: number, yMin: number, yMax: number) {
-  // Normalize x, y in [xMin, xMax], [yMin, yMax] to SF lat/lon
-  const lat = SF_LAT_MIN + ((y - yMin) / (yMax - yMin)) * (SF_LAT_MAX - SF_LAT_MIN);
-  const lon = SF_LON_MIN + ((x - xMin) / (xMax - xMin)) * (SF_LON_MAX - SF_LON_MIN);
+/**
+ * Normalize x, y in [xMin, xMax], [yMin, yMax] to [latMin, latMax], [lonMin, lonMax]
+ */
+export function normalizeCoord(
+  x: number, y: number,
+  xMin: number, xMax: number, yMin: number, yMax: number,
+  latMin: number, latMax: number, lonMin: number, lonMax: number
+) {
+  const lat = latMin + ((y - yMin) / (yMax - yMin)) * (latMax - latMin);
+  const lon = lonMin + ((x - xMin) / (xMax - xMin)) * (lonMax - lonMin);
   return { lat, lon };
 }
 
-export const simplifyUtilData = (data: any): SimplifiedData => {
+// Accept bounding box for normalization
+export const simplifyUtilData = (
+  data: any,
+  cityBounds?: { latMin: number, latMax: number, lonMin: number, lonMax: number },
+  cityName?: string,
+  stateName?: string
+): SimplifiedData => {
   const substations: SubstationWithUtility[] = [];
   const transformers: TransformerWithSubstation[] = [];
   const meters: MeterWithTransformer[] = [];
@@ -36,20 +42,30 @@ export const simplifyUtilData = (data: any): SimplifiedData => {
   if (xMin === xMax) { xMin -= 1; xMax += 1; }
   if (yMin === yMax) { yMin -= 1; yMax += 1; }
 
+  // Use provided city bounds or fallback to SF
+  const latMin = cityBounds?.latMin ?? 37.708;
+  const latMax = cityBounds?.latMax ?? 37.810;
+  const lonMin = cityBounds?.lonMin ?? -122.515;
+  const lonMax = cityBounds?.lonMax ?? -122.355;
+
   // Map transformers first (buses with non-empty Transformers array)
   data.results.bus_details.forEach((bus: any, idx: number) => {
     if (bus.Transformers && Array.isArray(bus.Transformers) && bus.Transformers.length > 0) {
       let lat = 0, lon = 0;
       if (bus.Coordinates) {
-        const norm = normalizeCoord(bus.Coordinates.X, bus.Coordinates.Y, xMin, xMax, yMin, yMax);
+        const norm = normalizeCoord(
+          bus.Coordinates.X, bus.Coordinates.Y,
+          xMin, xMax, yMin, yMax,
+          latMin, latMax, lonMin, lonMax
+        );
         lat = norm.lat;
         lon = norm.lon;
       }
       transformers.push({
         id: idx, // or bus.Bus if unique
         name: bus.Transformers[0].name || bus.name || bus.Bus || `Transformer ${idx}`,
-        city: "San Francisco",
-        state: "California",
+        city: cityName || "San Francisco",
+        state: stateName || "California",
         latitude: lat.toString(),
         longtitude: lon.toString(),
         pincode: "",
@@ -76,7 +92,11 @@ export const simplifyUtilData = (data: any): SimplifiedData => {
   data.results.bus_details.forEach((bus: any, idx: number) => {
     let lat = 0, lon = 0;
     if (bus.Coordinates) {
-      const norm = normalizeCoord(bus.Coordinates.X, bus.Coordinates.Y, xMin, xMax, yMin, yMax);
+      const norm = normalizeCoord(
+        bus.Coordinates.X, bus.Coordinates.Y,
+        xMin, xMax, yMin, yMax,
+        latMin, latMax, lonMin, lonMax
+      );
       lat = norm.lat;
       lon = norm.lon;
     }
@@ -89,8 +109,8 @@ export const simplifyUtilData = (data: any): SimplifiedData => {
       code: bus.name || bus.Bus || `Household ${idx}`,
       type: "household",
       max_capacity_KW: 0,
-      city: "San Francisco",
-      state: "California",
+      city: cityName || "San Francisco",
+      state: stateName || "California",
       latitude: lat,
       longitude: lon,
       pincode: "",

@@ -215,10 +215,10 @@ const UtilityAgent: React.FC<UtilityAgentProps> = ({
           neighbourhoods.push(match[1]);
         }
       }
-      const neighbourhoodsStr = neighbourhoods.length > 0 ? neighbourhoods.join(', ') : 'the affected neighbourhoods';
+      const neighbourhoodsStr = neighbourhoods.length > 0 ? neighbourhoods.join(', ') : 'the most heavily loaded transformers';
       const userMsg: Message = {
         id: generateMessageId(),
-        text: `Please provide details of all available DFPs for the following neighbourhoods: ${neighbourhoodsStr}.`,
+        text: `Please provide details of all available DFPs for the following transformers: ${neighbourhoodsStr}.`,
         isUser: true,
         timestamp: new Date().toISOString(),
       };
@@ -289,7 +289,10 @@ const UtilityAgent: React.FC<UtilityAgentProps> = ({
     });
   };
 
-  const isHtml = (str: string) => /<([a-z][\w0-9]*)(\s[^>]*)?>[\s\S]*?<\/\1>/i.test(str.trim());
+  const isHtml = (str: string) => {
+    if (typeof str !== "string") return 'Error: input is not a string';
+    return /<([a-z][\w0-9]*)(\s[^>]*)?>[\s\S]*?<\/\1>/i.test(str.trim());
+  };
 
   const unescapeHtml = (escaped: string) => {
     if (!escaped) return '';

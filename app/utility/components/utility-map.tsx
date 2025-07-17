@@ -11,6 +11,8 @@ import type {
 import { StatusBadge } from "./status-badge";
 import { Button } from "@/components/ui/button";
 import { GetCustomMapMarker } from "../lib/utils/custom-icon";
+import { useEffect, useState } from "react";
+
 interface UtilityMapProps {
   assets: AssetMarker[]; // Changed feeders to assets
   onSelectMeter?: (meter: MeterWithTransformer) => void;
@@ -66,21 +68,38 @@ export function UtilityMap({ assets, onSelectMeter }: UtilityMapProps) {
     return new Icon(iconDetails as BaseIconOptions);
   };
 
-  const centerLat =
-    assets.length > 0
-      ? assets.reduce((sum, asset) => sum + asset.coordinates[0], 0) /
-        assets.length
-      : 37.4419;
+  // Center on the average of asset coordinates, or fallback
+  const mapCenter: [number, number] = assets.length > 0
+    ? [
+        assets.reduce((sum, asset) => sum + asset.coordinates[0], 0) / assets.length,
+        assets.reduce((sum, asset) => sum + asset.coordinates[1], 0) / assets.length
+      ]
+    : [37.4419, -122.143]; // fallback to default
 
-  const centerLng =
-    assets.length > 0
-      ? assets.reduce((sum, asset) => sum + asset.coordinates[1], 0) /
-        assets.length
-      : -122.143;
+  // // Debug overlay state
+  // const [debugInfo, setDebugInfo] = useState<string>("");
+
+  // useEffect(() => {
+  //   // Print bounding box and asset coordinates
+  //   //let debug = "";
+  //   if (assets.length > 0) {
+  //     const lats = assets.map(a => a.coordinates[0]);
+  //     const lons = assets.map(a => a.coordinates[1]);
+  //     const latMin = Math.min(...lats).toFixed(6);
+  //     const latMax = Math.max(...lats).toFixed(6);
+  //     const lonMin = Math.min(...lons).toFixed(6);
+  //     const lonMax = Math.max(...lons).toFixed(6);
+  //     //debug += `Bounding Box: [${latMin}, ${latMax}, ${lonMin}, ${lonMax}]\n`;
+  //     //debug += assets.map((a, i) => `${a.type} ${a.name}: (${a.coordinates[0].toFixed(6)}, ${a.coordinates[1].toFixed(6)})`).join("\n");
+  //   } else {
+  //     //debug = "No assets";
+  //   }
+  //   //setDebugInfo(debug);
+  // }, [assets]);
 
   return (
     <MapContainer
-      center={[centerLat, centerLng]}
+      center={mapCenter}
       zoom={12}
       className="h-full w-full rounded-lg z-10"
     >

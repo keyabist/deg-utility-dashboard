@@ -13,7 +13,7 @@ import { useProcessedData } from "../lib/hooks/use-processed-data"
 import type { MeterWithTransformer } from "../lib/types"
 
 export default function UtilityDashboard() {
-  const { fetchAndStore, fetchAndStoreTransformerData, isLoading, selectedHouse, setSelectedHouse, transformerData, auditTrail, fetchAndStoreAuditTrail } = useSimplifiedUtilDataStore()
+  const { fetchAndStore, fetchAndStoreTransformerData, isLoading, selectedHouse, setSelectedHouse, transformerData, auditTrail, fetchAndStoreAuditTrail, citySelection, data } = useSimplifiedUtilDataStore()
   const [isAgentOpen, setIsAgentOpen] = useState(false)
   const [isControlPanelOpen, setIsControlPanelOpen] = useState(false)
   const [selectedFilter, setSelectedFilter] = useState("Transformers")
@@ -25,11 +25,15 @@ export default function UtilityDashboard() {
 
 
   useEffect(() => {
-    fetchAndStore()
-  }, [fetchAndStore])
+    // Only fetch if data is empty, and always use citySelection if available
+    if ((data?.transformers?.length ?? 0) === 0 && citySelection) {
+      const bounds = citySelection.cityBounds ? citySelection.cityBounds : undefined;
+      fetchAndStore(bounds, citySelection.cityName, citySelection.stateName);
+    }
+  }, [fetchAndStore, citySelection, data])
 
   useEffect(() => {
-    transformerData.forEach(transformer => {
+    transformerData.forEach((transformer: { id: any }) => {
       fetchAndStoreTransformerData(Number(transformer.id))
     })
   }, [fetchAndStoreTransformerData, transformerData])

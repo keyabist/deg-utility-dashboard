@@ -43,7 +43,8 @@ export function useProcessedData() {
 
     // Transformers
     const transformerSummaries: TransformerSummaryItem[] = [];
-    transformers.forEach((tr) => {
+    transformers.forEach((tr: StrapiTransformer) => {
+      // Use normalized latitude/longitude and city/state from simplifyUtilData
       const lat = typeof tr.latitude === 'string' ? parseFloat(tr.latitude) : tr.latitude;
       const lon = typeof tr.longtitude === 'string' ? parseFloat(tr.longtitude) : tr.longtitude;
       if (!isNaN(lat) && !isNaN(lon)) {
@@ -60,7 +61,7 @@ export function useProcessedData() {
         id: tr.id.toString(),
         name: tr.name,
         substationName: "", // No substations
-        city: "San Francisco, California",
+        city: [tr.city, tr.state].filter(Boolean).join(", "),
         currentLoad: tr.currentLoad || 0,
         status: tr.status || "Normal",
         metersCount: tr.meters ? tr.meters.length : 0,
@@ -71,7 +72,8 @@ export function useProcessedData() {
     });
 
     // Households (Meters)
-    meters.forEach((meter) => {
+    meters.forEach((meter: any) => {
+      // Use normalized latitude/longitude from simplifyUtilData
       const lat = typeof meter.latitude === 'string' ? parseFloat(meter.latitude) : meter.latitude;
       const lon = typeof meter.longitude === 'string' ? parseFloat(meter.longitude) : meter.longitude;
       if (!isNaN(lat) && !isNaN(lon)) {

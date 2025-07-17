@@ -29,18 +29,38 @@ interface UtilityAgentProps {
 }
 
 export function UtilityAgent({ initialMessage, onClose }: UtilityAgentProps) {
-  const [messages, setMessages] = useState<AgentMessage[]>([
-    {
-      id: "1",
-      text: initialMessage || "Good morning! Based on your past 12 months of usage and roof geometry, you're an excellent candidate for rooftop solar + battery.\n\nWould you like me to prepare a personalized plan and begin coordination?",
-      isUser: false,
-      timestamp: new Date(),
-      charts: [],
-    },
-  ])
+  const STORAGE_KEY = 'utility-agent-messages';
+  const [messages, setMessages] = useState<AgentMessage[]>(() => {
+    if (typeof window !== 'undefined') {
+      const stored = localStorage.getItem(STORAGE_KEY);
+      if (stored) {
+        try {
+          const parsed = JSON.parse(stored);
+          // Convert timestamp back to Date
+          return parsed.map((msg: any) => ({ ...msg, timestamp: new Date(msg.timestamp) }));
+        } catch {
+          // fallback to default
+        }
+      }
+    }
+    return [
+      {
+        id: "1",
+        text: initialMessage || "Good morning! Based on your past 12 months of usage and roof geometry, you're an excellent candidate for rooftop solar + battery.\n\nWould you like me to prepare a personalized plan and begin coordination?",
+        isUser: false,
+        timestamp: new Date(),
+        charts: [],
+      },
+    ];
+  });
   const [inputText, setInputText] = useState("")
   const [isMinimized, setIsMinimized] = useState(false)
   const messagesEndRef = useRef<HTMLDivElement>(null)
+
+  // Persist messages to localStorage on change
+  useEffect(() => {
+    localStorage.setItem(STORAGE_KEY, JSON.stringify(messages));
+  }, [messages]);
 
   const scrollToBottom = () => {
     messagesEndRef.current?.scrollIntoView({ behavior: "smooth" })
