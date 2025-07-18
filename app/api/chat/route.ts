@@ -21,7 +21,8 @@ async function ensureSessionActivated() {
     globalUserId = generateRandomId('u');
     globalSessionId = generateRandomId('s');
     // Activate the session
-    const url = `http://localhost:8000/apps/multi-tool-agent/users/${globalUserId}/sessions/${globalSessionId}`;
+    const AGENT_BASE_URL = process.env.ADK_AGENT_URL?.replace(/\/run$/, '') || 'http://localhost:8000';
+    const url = `${AGENT_BASE_URL}/apps/multi-tool-agent/users/${globalUserId}/sessions/${globalSessionId}`;
     const res = await fetch(url, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
@@ -64,7 +65,7 @@ export async function POST(req: Request) {
 
         // Helper function to call backend
         async function callBackend() {
-            const backendRes = await fetch('http://localhost:8000/run', {
+            const backendRes = await fetch(process.env.ADK_AGENT_URL || 'http://localhost:8000/run', {
                 method: 'POST',
                 headers: {
                     'Content-Type': 'application/json',

@@ -6,7 +6,7 @@ interface StatusBadgeProps {
   size?: "sm" | "md" | "lg"
 }
 
-export function StatusBadge({ status, size = "md" }: StatusBadgeProps) {
+export function StatusBadge({ status, size = "md" }: { status: "Critical" | "Warning" | "Normal" | "Overloaded"; size?: "sm" | "md" | "lg" }) {
   const getStatusColor = () => {
     switch (status) {
       case "Critical":

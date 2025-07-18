@@ -20,7 +20,6 @@ import type {
 type SimplifiedDataState = {
   data: SimplifiedData;
   transformerData: StrapiTransformer[];
-  auditTrail: SimplifiedAuditTrail[];
   setData: (data: SimplifiedData) => void;
   clear: () => void;
   fetchAndStore: (
@@ -31,14 +30,12 @@ type SimplifiedDataState = {
   selectedHouse: MeterWithTransformer | null;
   setSelectedHouse: (house: MeterWithTransformer | null) => void;
   isLoading: boolean;
-  isAuditTrailLoading: boolean;
   updateDerSettings: (
     meterId: number,
     newDersSettings: Array<{ id: number; isEnabled: boolean }>
   ) => void;
   fetchAndStoreTransformerData: (transformerId: number) => Promise<void>;
   startStream: (transformerId: number) => Promise<void>;
-  fetchAndStoreAuditTrail: (loader?: boolean) => Promise<void>;
   citySelection: {
     cityBounds: { latMin: number, latMax: number, lonMin: number, lonMax: number } | null;
     cityName: string;
@@ -59,17 +56,13 @@ export const useSimplifiedUtilDataStore = create(
       },
       selectedHouse: null,
       isLoading: false,
-      isAuditTrailLoading: false,
       transformerData: [],
-      auditTrail: [],
       citySelection: null,
       setCitySelection: (selection: { cityBounds: { latMin: number, latMax: number, lonMin: number, lonMax: number }, cityName: string, stateName: string }) => set({ citySelection: selection }),
       clearCitySelection: () => set({ citySelection: null }),
       setSelectedHouse: (house: MeterWithTransformer | null) => set({ selectedHouse: house }),
 
       setData: (data: SimplifiedData) => set({ data }),
-
-      setAuditTrail: (auditTrail: SimplifiedAuditTrail[]) => set({ auditTrail }),
 
       clear: () =>
         set({ data: { substations: [], transformers: [], meters: [] } }),
@@ -233,42 +226,6 @@ export const useSimplifiedUtilDataStore = create(
             },
           };
         });
-      },
-
-      fetchAndStoreAuditTrail: async (loader: boolean = true) => {
-        set({ isAuditTrailLoading: loader });
-        const url = "https://bpp-unified-strapi-deg.becknprotocol.io/unified-beckn-energy/audit-trail";
-        const response = await fetch(url, {
-          method: 'GET',
-          headers: {
-            'Accept': 'application/json',
-            'Connection': 'keep-alive'
-          }
-        });
-
-        if (!response.ok) {
-          console.error("Error fetching audit trail data from Strapi:", response.statusText);
-          set({
-            auditTrail: [],
-            isAuditTrailLoading: false,
-          });
-          return;
-        }
-
-        if (response.ok) {
-          const data = await response.json();
-          const simplified = simplifyAuditTrailData(data);
-          set({
-            auditTrail: simplified,
-            isAuditTrailLoading: false,
-          });
-        } else {
-          console.error("Fetched data is null or not in expected format (missing audit trail array)");
-          set({
-            auditTrail: [],
-            isAuditTrailLoading: false,
-          });
-        }
       },
     }),
     {

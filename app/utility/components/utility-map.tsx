@@ -22,7 +22,7 @@ export function UtilityMap({ assets, onSelectMeter }: UtilityMapProps) {
   // Changed feeders to assets
   const createAssetIcon = (
     type: AssetType,
-    status: "Critical" | "Warning" | "Normal" = "Normal"
+    status: "Critical" | "Warning" | "Normal" | "Overloaded" = "Normal"
   ) => {
     let localType = type;
     let iconColor = "#2463EB"; // Default blue (Normal)
@@ -31,6 +31,7 @@ export function UtilityMap({ assets, onSelectMeter }: UtilityMapProps) {
 
     if (status === "Critical") iconColor = "#ef4444"; // Red
     else if (status === "Warning") iconColor = "#f59e0b"; // Yellow
+    else if (status === "Overloaded") iconColor = "#db2777"; // Pink for Overloaded (customize as needed)
 
     switch (localType) {
       case "substation":
@@ -43,6 +44,8 @@ export function UtilityMap({ assets, onSelectMeter }: UtilityMapProps) {
             ? "#ef4444"
             : status === "Warning"
             ? "#f59e0b"
+            : status === "Overloaded"
+            ? "#db2777"
             : "#10b981"; // Blue for normal transformer #2463EB
         showAnimate = status === "Critical";
         break;
@@ -56,6 +59,8 @@ export function UtilityMap({ assets, onSelectMeter }: UtilityMapProps) {
             ? "#ef4444"
             : status === "Warning"
             ? "#f59e0b"
+            : status === "Overloaded"
+            ? "#db2777"
             : "#10b981"; // "#DB4437" Blue for normal transformer #2463EB
         showAnimate = status === "Critical";
         break;

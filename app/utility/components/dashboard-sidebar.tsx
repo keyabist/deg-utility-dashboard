@@ -11,17 +11,37 @@ import { useSimplifiedUtilDataStore } from "../lib/stores/utility-store";
 
 interface DashboardSidebarProps {
   transformerSummaries: TransformerSummaryItem[];
-  auditTrail: SimplifiedAuditTrail[];
-  fetchAuditTrails: (loader?: boolean) => Promise<void>;
+  // auditTrail: SimplifiedAuditTrail[]; // Removed as per edit hint
+  // fetchAuditTrails: (loader?: boolean) => Promise<void>; // Removed as per edit hint
 }
 
 export function DashboardSidebar({
   transformerSummaries,
-  auditTrail,
-  fetchAuditTrails,
+  // auditTrail, // Removed as per edit hint
+  // fetchAuditTrails, // Removed as per edit hint
 }: DashboardSidebarProps) {
   const [tab, setTab] = useState<'feeder'>('feeder');
-  const { isLoading: isFeederSummaryLoading } = useSimplifiedUtilDataStore();
+  const { isLoading: isFeederSummaryLoading, fetchAndStore } = useSimplifiedUtilDataStore();
+
+  // Cache the last non-empty transformerSummaries
+  const [cachedSummaries, setCachedSummaries] = useState<TransformerSummaryItem[]>([]);
+  useEffect(() => {
+    if (transformerSummaries && transformerSummaries.length > 0) {
+      setCachedSummaries(transformerSummaries);
+    }
+  }, [transformerSummaries]);
+
+  // Poll for updates every 3 seconds
+  useEffect(() => {
+    const interval = setInterval(() => {
+      fetchAndStore(); // Update transformer summaries and other data
+      // fetchAuditTrails(); // Update audit trails // Removed as per edit hint
+    }, 3000);
+    return () => clearInterval(interval);
+  }, [fetchAndStore]); // Removed fetchAuditTrails from dependency array
+
+  // Use cached data if loading
+  const displaySummaries = isFeederSummaryLoading ? cachedSummaries : transformerSummaries;
 
   return (
     <aside className="w-full h-full flex flex-col bg-card p-0 rounded-lg border border-border shadow-lg">
@@ -47,63 +67,54 @@ export function DashboardSidebar({
       </div>
       {/* Scrollable Content */}
       <div className="flex-1 min-h-0 flex flex-col">
-        {isFeederSummaryLoading ? (
-          <div className="flex-1 w-full h-full bg-gray-100 animate-pulse rounded-lg flex items-center justify-center mb-3">
-            <div className="text-center">
-              <div className="w-8 h-8 border-2 border-blue-600 border-t-transparent rounded-full animate-spin mx-auto mb-2"></div>
-              <p className="text-gray-500 text-sm">Loading...</p>
-            </div>
-          </div>
-        ) : (
-          <ScrollArea className="flex-1 min-h-0 px-3 pb-3">
-            <div className="space-y-3 mt-2">
-              {transformerSummaries.length > 0 ? (
-                transformerSummaries.map((item) => (
-                  <div key={item.id}>
-                    <div className="pt-3 pb-3">
-                      <div className="flex items-center justify-between mb-1">
-                        <h3
-                          className="font-semibold text-foreground text-base truncate"
-                          title={item.name}
-                        >
-                          {item.name.length > 22
-                            ? `${item.name.slice(0, 22)}...`
-                            : item.name}
-                        </h3>
-                        <StatusBadge status={item.status} size="sm" />
-                      </div>
-                      <div className="text-xs text-muted-foreground mb-1 flex justify-between">
-                        <span>Region: {item.city}</span>
-                        <span>Margin: {item.margin}%</span>
-                      </div>
-                      <div className="w-full h-2 rounded bg-white dark:bg-white mb-1">
-                        <div
-                          className={`h-2 rounded ${
-                            item.status === "Critical"
-                              ? "bg-red-500"
-                              : item.status === "Warning"
-                              ? "bg-yellow-400"
-                              : "bg-green-500"
-                          }`}
-                          style={{ width: `${((item.currentLoad / item.maxCapacity) * 100).toFixed(2)}%` }}
-                        />
-                      </div>
-                      <div className="flex justify-between text-xs text-muted-foreground">
-                        <span>{((item.currentLoad / item.maxCapacity) * 100).toFixed(2)}%</span>
-                        <span>{item.maxCapacity} kW</span>
-                      </div>
+        <ScrollArea className="flex-1 min-h-0 px-3 pb-3">
+          <div className="space-y-3 mt-2">
+            {displaySummaries.length > 0 ? (
+              displaySummaries.map((item) => (
+                <div key={item.id}>
+                  <div className="pt-3 pb-3">
+                    <div className="flex items-center justify-between mb-1">
+                      <h3
+                        className="font-semibold text-foreground text-base truncate"
+                        title={item.name}
+                      >
+                        {item.name.length > 22
+                          ? `${item.name.slice(0, 22)}...`
+                          : item.name}
+                      </h3>
+                      <StatusBadge status={item.status} size="sm" />
                     </div>
-                    <div className="border-t-2 border-border mt-2"></div>
+                    <div className="text-xs text-muted-foreground mb-1 flex justify-between">
+                      <span>Region: {item.city}</span>
+                      <span>Margin: {item.margin}%</span>
+                    </div>
+                    <div className="w-full h-2 rounded bg-white dark:bg-white mb-1">
+                      <div
+                        className={`h-2 rounded ${
+                          item.status === "Critical" || item.status === "Overloaded"
+                            ? "bg-red-500"
+                            : item.status === "Warning"
+                            ? "bg-yellow-400"
+                            : "bg-green-500"
+                        }`}
+                        style={{ width: `${((item.currentLoad / item.maxCapacity) * 100).toFixed(2)}%` }}
+                      />
+                    </div>
+                    <div className="flex justify-between text-xs text-muted-foreground">
+                      <span>{((item.currentLoad / item.maxCapacity) * 100).toFixed(2)}%</span>
+                      <span>{item.maxCapacity} kW</span>
+                    </div>
                   </div>
-                ))
-              ) : (
-                <div className="text-muted-foreground text-sm text-center py-10">
-                  No transformer data available.
+                  <div className="border-t-2 border-border mt-2"></div>
                 </div>
-              )}
-            </div>
-          </ScrollArea>
-        )}
+              ))
+            ) : (
+              <div className="text-muted-foreground text-sm text-center py-10">
+                No transformer data available.
+              </div>
+            )}
+          </div>
+        </ScrollArea>
       </div>
     </aside>
   );

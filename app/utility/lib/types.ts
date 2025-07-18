@@ -11,7 +11,7 @@ export type House = {
   name: string
   currentLoad: number
   totalDERs: number
-  status: "Critical" | "Warning" | "Normal"
+  status: "Critical" | "Warning" | "Normal" | "Overloaded"
   ders: DERInfo[]
   coordinates: [number, number]
 }
@@ -22,7 +22,7 @@ export interface FeederData {
   name: string
   region: string
   currentLoad: number
-  status: "Critical" | "Warning" | "Normal"
+  status: "Critical" | "Warning" | "Normal" | "Overloaded"
   coordinates: [number, number]
   meters: ProcessedMeter[]
 }
@@ -34,7 +34,7 @@ export interface TransformerSummaryItem {
   substationName: string // Parent substation name
   city: string // Transformer's city
   currentLoad: number // Percentage load for this transformer
-  status: "Critical" | "Warning" | "Normal"
+  status: "Critical" | "Warning" | "Normal" | "Overloaded"
   metersCount: number
   maxCapacity: number
   margin: number
@@ -54,7 +54,7 @@ export type AssetMarker = {
   name: string
   type: AssetType
   coordinates: [number, number]
-  status?: "Critical" | "Warning" | "Normal"
+  status?: "Critical" | "Warning" | "Normal" | "Overloaded"
   hasDers?: boolean // For filtering households with DERs
   emergencyService?: boolean
 }
@@ -106,7 +106,7 @@ export interface StrapiTransformer {
   longtitude: string
   pincode: string
   max_capacity_KW: number
-  status?: "Critical" | "Warning" | "Normal"
+  status?: "Critical" | "Warning" | "Normal" | "Overloaded"
   currentLoad?: number
   margin?: number
   meters: StrapiMeter[]
@@ -189,7 +189,7 @@ export interface ProcessedMeter {
   code: string
   currentLoad: number
   capacity: number
-  status: "Critical" | "Warning" | "Normal"
+  status: "Critical" | "Warning" | "Normal" | "Overloaded"
   energyResourceName?: string
 }
 
